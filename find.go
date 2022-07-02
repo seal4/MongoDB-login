@@ -10,7 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func upload(username string, password string) {
+func Compare(username string) string {
 	serverAPIOptions := options.ServerAPI(options.ServerAPIVersion1)
 	clientOptions := options.Client().ApplyURI("mongodb+srv://root:nqwk6au1Xs4caQVdhw3rplp5ch2PDCzfFSzj@cluster0.3abna.mongodb.net/?retryWrites=true&w=majority").SetServerAPIOptions(serverAPIOptions)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -20,15 +20,16 @@ func upload(username string, password string) {
 		log.Fatal("could not connect to MongoDB: ", err)
 	}
 	log.Println("Connected to MongoDB!")
-	Site := client.Database("Users")                  //outermost layer
-	LoginCollection := Site.Collection("Credentials") //innermost layer
-
-	result, err := LoginCollection.InsertOne(ctx, bson.D{
-		{Key: "Username", Value: username},
-		{Key: "Password", Value: hash(password)},
-	})
+	coll := client.Database("Users").Collection("Credentials") //innermost layer
+	var result bson.M
+	err = coll.FindOne(context.TODO(), bson.D{{"Username", username}}).Decode(&result)
 	if err != nil {
-		log.Fatal("error uploading data to MongoDB: ", err)
+		if err == mongo.ErrNoDocuments {
+			// This error means your query did not match any documents.
+			return username
+		}
+		panic(err)
 	}
-	log.Println("uploaded sucessfully!: ", result)
+	log.Println(result)
+	return username
 }
